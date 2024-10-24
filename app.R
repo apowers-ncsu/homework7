@@ -180,7 +180,7 @@ server <- function(input, output, session) {
     {
       if(input$hhl_corr == "All") {
         hhl_sub <- HHLvals
-      } else if(input$hhl_corr == "English Only") {
+      } else if(input$hhl_corr == "English only") {
         hhl_sub <- HHLvals["1"]
       } else if(input$hhl_corr == "Spanish") {
         hhl_sub <- HHLvals["2"]
@@ -199,7 +199,7 @@ server <- function(input, output, session) {
       if(input$schl_corr == "All") {
         schl_sub <- SCHLvals
       } else if(input$schl_corr == "High School not Completed") {
-        schl_sub <- SCHLvals[as.character(0:15)]
+        schl_sub <- SCHLvals[as.character(formatC(1:15,width=2,format="d",flag="0"))]
       } else if(input$schl_corr == "High School or GED") {
         schl_sub <- SCHLvals[as.character(16:19)]
       } else {
@@ -207,6 +207,11 @@ server <- function(input, output, session) {
       }
       
       corr_vars <- c(input$corr_x, input$corr_y)
+      
+      #debugging
+      #print(hhl_sub)
+      #print(fs_sub)
+      #print(schl_sub)
       
       subsetted_data <- my_sample |>
         filter(#cat vars first
