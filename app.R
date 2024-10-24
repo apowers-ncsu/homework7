@@ -8,7 +8,9 @@ source("helpers.R")
 ui <- fluidPage(
 
   #title
-  "Correlation Exploration",
+  h1(
+    "Correlation Exploration"
+    ),
   
   #layout
   sidebarLayout(
@@ -40,28 +42,42 @@ ui <- fluidPage(
       ),
       
       #header for subset radio buttons
-      h2("Choose a subset of the data:"),
-      
-      ############NEED TO FIX CONFLICTS (SAME VAR IN X AND Y SHOULD TRIGGER SHIFT AND EXCLUDE)
+      h2(
+        "Choose a subset of the data:"
+        ),
       
       #####radio buttons
       #hhl_corr
       radioButtons( 
         inputId = "hhl_corr", 
         label = "Household Language", 
-        choices = HHLvals
+        choices = c(
+          "All",
+          "English only",
+          "Spanish",
+          "Other"
+          )
         ), 
       #fs_corr
       radioButtons( 
         inputId = "fs_corr", 
         label = "SNAP Recipient", 
-        choices = FSvals
+        choices = c(
+          "All",
+          "Yes",
+          "No"
+          )
         ),       
       #schl_corr
       radioButtons( 
         inputId = "schl_corr", 
         label = "Education attainment", 
-        choices = SCHLvals
+        choices = c(
+          "All",
+          "High School not Completed",
+          "High School or GED",
+          "College Degree"
+          )
         ),
       
       #header for selector
@@ -72,10 +88,10 @@ ui <- fluidPage(
       ######slider for sample size
       sliderInput(
         "corr_n",
-        #"Slider", 
+        "", 
         min = 20, 
         max = 500,
-        #value = 50
+        value = 20
         ),
  
       #action here     
@@ -86,6 +102,7 @@ ui <- fluidPage(
       
     ),
     
+    #####mainpanel
     mainPanel(
       
       #scatterplot
@@ -161,29 +178,29 @@ server <- function(input, output, session) {
   observeEvent(
     input$corr_sample,
     {
-      if(input$hhl_corr == "all") {
+      if(input$hhl_corr == "All") {
         hhl_sub <- HHLvals
-      } else if(input$hhl_corr == "english") {
+      } else if(input$hhl_corr == "English Only") {
         hhl_sub <- HHLvals["1"]
-      } else if(input$hhl_corr == "spanish") {
+      } else if(input$hhl_corr == "Spanish") {
         hhl_sub <- HHLvals["2"]
       } else {
         hhl_sub <- HHLvals[c("0", "3", "4", "5")]
       }
       
-      if(input$fs_corr == "all") {
+      if(input$fs_corr == "All") {
         fs_sub <- FSvals
-      } else if(input$fs_corr == "yes") {
+      } else if(input$fs_corr == "Yes") {
         fs_sub <- FSvals["1"]
       } else {
         fs_sub <- FSvals["2"]
       }
       
-      if(input$schl_corr == "all") {
+      if(input$schl_corr == "All") {
         schl_sub <- SCHLvals
-      } else if(input$schl_corr == "no_hs") {
+      } else if(input$schl_corr == "High School not Completed") {
         schl_sub <- SCHLvals[as.character(0:15)]
-      } else if(input$schl_corr == "hs") {
+      } else if(input$schl_corr == "High School or GED") {
         schl_sub <- SCHLvals[as.character(16:19)]
       } else {
         schl_sub <- SCHLvals[as.character(20:24)]
@@ -219,63 +236,59 @@ server <- function(input, output, session) {
       #the corr_truth argument should be updated to be the correlation between 
       #the two variables selected: 
       #cor(sample_corr$corr_data |> select(corr_vars))[1,2]
-      
+      sample_corr$corr_data <- subsetted_data[index,]
+      sample_corr$corr_truth <- cor(sample_corr$corr_data |> select(corr_vars))[1,2]
     
-    #Create a renderPlot() object to output a scatter plot
-    #Use the code below to validate that data exists,
-    #(you'll need to install the shinyalert package if you don't have it)
-    #and then create the appropriate scatter plot
+      #Create a renderPlot() object to output a scatter plot
+      #Use the code below to validate that data exists,
+      #(you'll need to install the shinyalert package if you don't have it)
+      #and then create the appropriate scatter plot
       validate(
-        
-        need(!is.null(sample_corr$corr_data), "Please select your variables, subset, and click the 'Get a Sample!' button.")
-        
+        need(!is.null(sample_corr$corr_data), 
+             "Please select your variables, subset, and click the 'Get a Sample!' button."
+             )
       ) #this is a useful function to add as a placeholder until data is generated!
       
-      ggplot(sample_corr$corr_data, aes_string(x = isolate(input$corr_x), y = isolate(input$corr_y))) +
-        
-        geom_point()
-
+      output$plot <- renderPlot( {
+        ggplot(
+          sample_corr$corr_data,
+          aes_string(
+            x = isolate(input$corr_x),
+            y = isolate(input$corr_y)
+            )
+          ) + 
+          geom_point()
+        } )
     
-    #Use this code for the correlation guessing game!
-    observeEvent(input$corr_submit, {
-      
-      close <- abs(input$corr_guess - sample_corr$corr_truth) <= .05
-      
-      if(close){
-      
-          shinyalert(title = "Nicely done!",
-                     
-                     paste0("The sample correlation is ", 
-                            
-                            round(sample_corr$corr_truth, 4), 
-                            
-                            "."),
-                     
-                     type = "success"
-                     
-        )
-        
-      } else {
-        
-        if(input$corr_guess > sample_corr$corr_truth){
-          
-          shinyalert(title = "Try again!",
-                     
-                     "Try guessing a lower value.")
-          
-        } else {
-          
-          shinyalert(title = "Try again!",
-                     
-                     "Try guessing a higher value.")
-          
-        }
-        
-      }
-      
-    })
-    
+      #Use this code for the correlation guessing game!
+      observeEvent(
+        input$corr_submit, 
+        {
+          close <- abs(input$corr_guess - sample_corr$corr_truth) <= .05
+          if(close) {
+            shinyalert(
+              title = "Nicely done!",
+              paste0("The sample correlation is ", 
+                     round(sample_corr$corr_truth, 4), 
+                     "."),
+              type = "success"
+              )
+          } else {
+            if(input$corr_guess > sample_corr$corr_truth) {
+              shinyalert(title = "Try again!",
+                         "Try guessing a lower value."
+                         )
+              } else {
+              shinyalert(title = "Try again!",
+                         "Try guessing a higher value."
+                        )        
+              }
+            }
+          }
+      )
+    }
+  )
 }
-
+ 
 # Run the application 
 shinyApp(ui = ui, server = server)
